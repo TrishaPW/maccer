@@ -50,6 +50,7 @@ type Config struct {
 	DebugUser             string // When set, only this user can interact with the bot
 	AdministrativeChannel string // administrative channel where someone can speak as bot
 	PrimaryChannel        string // main channel the bot hangs out in
+	LogChannel            string // logging channel for errors etc
 	ForumEndpoint         string // Forum URL
 	ForumKey              string // API key
 }
@@ -63,6 +64,7 @@ func main() {
 		DebugUser:             configStrFromEnv("DEBUG_USER"),
 		AdministrativeChannel: configStrFromEnv("ADMINISTRATIVE_CHANNEL"),
 		PrimaryChannel:        configStrFromEnv("PRIMARY_CHANNEL"),
+		LogChannel:            configStrFromEnv("LOG_CHANNEL"),
 		ForumEndpoint:         configStrFromEnv("FORUM_ENDPOINT"),
 		ForumKey:              configStrFromEnv("FORUM_KEY"),
 	})

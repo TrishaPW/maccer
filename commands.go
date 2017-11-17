@@ -3,23 +3,20 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
-	gocache "github.com/patrickmn/go-cache"
 	"go.uber.org/zap"
 )
 
 // Command represents a public, private or administrative command
 type Command struct {
 	commandManager  *CommandManager
-	Function        func(cm CommandManager, args string, message discordgo.Message, contextual bool) (bool, bool, error)
+	Function        func(args string, message discordgo.Message, contextual bool) (bool, error)
 	Source          CommandSource
 	ParametersRange CommandParametersRange
 	Description     string
 	Usage           string
 	Example         string
-	ErrorMessage    string
 	RequireVerified bool
 	RequireAdmin    bool
 	Context         bool
@@ -30,13 +27,13 @@ type Command struct {
 func LoadCommands(app *App) map[string]Command {
 	return map[string]Command{
 		"verify": {
-			Function:    commandVerify,
+			Function:    app.commandVerify,
 			Source:      CommandSourcePRIVATE,
-			Description: "Verify you are the owner of a SA:MP forum account",
-			Usage:       "verify",
+			Description: "Verify you are the owner of a Bay Area Roleplay forum account",
+			Usage:       "verify <id>",
 			ParametersRange: CommandParametersRange{
-				Minimum: -1,
-				Maximum: -1,
+				Minimum: 1,
+				Maximum: 1,
 			},
 			RequireVerified: false,
 			RequireAdmin:    false,
@@ -67,7 +64,6 @@ const (
 type CommandManager struct {
 	App      *App
 	Commands map[string]Command
-	Contexts *gocache.Cache
 }
 
 // CommandParametersRange represents minimum value and maximum value number of parameters for a command
@@ -81,7 +77,6 @@ func (app *App) StartCommandManager() {
 	app.commandManager = &CommandManager{
 		App:      app,
 		Commands: make(map[string]Command),
-		Contexts: gocache.New(5*time.Minute, 30*time.Second),
 	}
 
 	app.commandManager.Commands = LoadCommands(app)
@@ -97,21 +92,6 @@ func (cm CommandManager) Process(message discordgo.Message) (exists bool, source
 	if err != nil {
 		errs = []error{err}
 		return
-	}
-
-	contextCommand, found := cm.Contexts.Get(message.Author.ID)
-	if found {
-		logger.Debug("found existing command context", zap.String("id", message.Author.ID))
-
-		contextCommand := contextCommand.(Command)
-		if contextCommand.Source == source {
-			var continueContext bool
-			continueContext, errs = cm.ProcessContext(contextCommand, message.Content, message)
-			if !continueContext {
-				cm.Contexts.Delete(message.Author.ID)
-			}
-			return true, source, errs
-		}
 	}
 
 	commandAndParameters := strings.SplitN(message.Content, " ", 2)
@@ -194,11 +174,6 @@ func (cm CommandManager) Process(message discordgo.Message) (exists bool, source
 		return exists, source, errs
 	}
 
-	var (
-		success      bool
-		enterContext bool
-	)
-
 	err = cm.App.discordClient.ChannelTyping(message.ChannelID)
 	if err != nil {
 		logger.Warn("failed to get channel info",
@@ -206,45 +181,17 @@ func (cm CommandManager) Process(message discordgo.Message) (exists bool, source
 		return
 	}
 
-	// Execute the command.
-	success, enterContext, err = commandObject.Function(cm, commandArgument, message, false)
+	success, err := commandObject.Function(commandArgument, message, false)
 	errs = append(errs, err)
-	if enterContext {
-		if commandObject.Context {
-			cm.Contexts.Set(message.Author.ID, commandObject, gocache.DefaultExpiration)
-		}
-	}
+
 	if !success {
-		if commandObject.ErrorMessage != "" {
-			// Format it if we have a mention in the error message.
-			if strings.Contains(commandObject.ErrorMessage, "<@%s>") {
-				_, err = cm.App.discordClient.ChannelMessageSend(message.ChannelID, fmt.Sprintf(commandObject.ErrorMessage, message.Author.ID))
-			} else {
-				_, err = cm.App.discordClient.ChannelMessageSend(message.ChannelID, commandObject.ErrorMessage)
-			}
-
-			errs = append(errs, err)
-		} else {
-			_, err = cm.App.discordClient.ChannelMessageSend(message.ChannelID, fmt.Sprintf("%s\n%s\n%s", commandObject.Usage, commandObject.Description, commandObject.Example))
-			if err != nil {
-				errs = append(errs, err)
-			}
-
-			return exists, source, errs
-		}
+		_, err = cm.App.discordClient.ChannelMessageSend(
+			message.ChannelID,
+			fmt.Sprintf("%s\n%s\n%s", commandObject.Usage, commandObject.Description, commandObject.Example))
+		errs = append(errs, err)
 	}
 
 	return exists, source, errs
-}
-
-// ProcessContext re-runs a Command function if the user is currently in a
-// Command's context.
-func (cm CommandManager) ProcessContext(command Command, cmdtext string, message discordgo.Message) (continueContext bool, errs []error) {
-	_, continueContext, err := command.Function(cm, cmdtext, message, true)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	return continueContext, errs
 }
 
 func (cm CommandManager) getCommandSource(message discordgo.Message) (CommandSource, error) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/bwmarrin/discordgo"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -48,7 +49,6 @@ func (app *App) onReady(s *discordgo.Session, event *discordgo.Ready) {
 	app.ready <- true
 }
 
-// nolint:gocyclo
 func (app *App) onMessage(s *discordgo.Session, event *discordgo.MessageCreate) {
 	if len(app.ready) > 0 {
 		<-app.ready
@@ -66,13 +66,10 @@ func (app *App) onMessage(s *discordgo.Session, event *discordgo.MessageCreate) 
 		logger.Debug("accepting command from debug user")
 	}
 
-	_, source, errors := app.commandManager.Process(*event.Message)
-	for _, err := range errors {
+	_, source, errs := app.commandManager.Process(*event.Message)
+	for _, err := range errs {
 		if err != nil {
-			err = app.WarnUserError(event.Message.ChannelID, err.Error())
-			if err != nil {
-				logger.Warn("failed to warn user of error", zap.Error(err))
-			}
+			app.ChannelLogError(err)
 		}
 	}
 
@@ -109,9 +106,10 @@ func (app *App) onJoin(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
 	// }
 }
 
-// WarnUserError informs the user of an error and provides them with
-// instructions for what to do next.
-func (app App) WarnUserError(channelid string, errorString string) error {
-	_, err := app.discordClient.ChannelMessageSend(channelid, errorString)
-	return err
+// ChannelLogError sends an error to the logging channel, exiting on failure
+func (app *App) ChannelLogError(err error) {
+	_, err = app.discordClient.ChannelMessageSend(app.config.LogChannel, errors.Cause(err).Error())
+	if err != nil {
+		logger.Fatal("failed to log error", zap.Error(err))
+	}
 }
