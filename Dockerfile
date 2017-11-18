@@ -9,7 +9,6 @@ RUN make static
 
 FROM scratch
 COPY --from=compile /go/src/github.com/Southclaws/maccer/maccer /bin/maccer
-COPY --from=compile /go/src/github.com/Southclaws/maccer/lang /cjlang
 COPY --from=compile /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 ENTRYPOINT ["maccer"]
