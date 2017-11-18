@@ -105,28 +105,20 @@ func (cm CommandManager) Process(message discordgo.Message) (exists bool, source
 	commandObject.commandManager = &cm
 
 	if !exists {
-		logger.Debug("ignoring command that does not exist",
-			zap.String("command", commandTrigger))
 		return
 	}
 
 	if source != commandObject.Source {
-		logger.Debug("ignoring command with incorrect source",
-			zap.String("command", commandTrigger),
-			zap.Any("source", source),
-			zap.Any("wantSource", commandObject.Source))
 		return
 	}
 
 	switch source {
 	case CommandSourceADMINISTRATIVE:
 		if message.ChannelID != cm.App.config.AdministrativeChannel {
-			logger.Debug("ignoring admin command used in wrong channel", zap.String("command", commandTrigger))
 			return
 		}
 	case CommandSourcePRIMARY:
 		if message.ChannelID != cm.App.config.PrimaryChannel {
-			logger.Debug("ignoring primary channel command used in wrong channel", zap.String("command", commandTrigger))
 			return
 		}
 	}
