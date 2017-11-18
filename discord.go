@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -105,7 +107,7 @@ func (app *App) onJoin(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
 
 // ChannelLogError sends an error to the logging channel, exiting on failure
 func (app *App) ChannelLogError(err error) {
-	_, err = app.discordClient.ChannelMessageSend(app.config.LogChannel, errors.WithStack(err).Error())
+	_, err = app.discordClient.ChannelMessageSend(app.config.LogChannel, fmt.Sprint(errors.WithStack(err)))
 	if err != nil {
 		logger.Fatal("failed to log error", zap.Error(err))
 	}

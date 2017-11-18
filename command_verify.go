@@ -59,7 +59,7 @@ https://i.imgur.com/n8vfO2N.png`,
 	}
 
 	ticker := time.NewTicker(time.Second * 5)
-	timer := time.NewTimer(time.Minute)
+	timer := time.NewTimer(time.Minute * 5)
 	go func() {
 		var (
 			member    ips.Member
@@ -112,13 +112,13 @@ https://i.imgur.com/n8vfO2N.png`,
 
 						break loop
 					} else {
-						_, inlineErr = app.discordClient.ChannelMessageSend(
-							message.ChannelID,
-							fmt.Sprintf("The codes did not match, the code you were given was '%s' and the code on your profile was '%s'",
-								code, gotCode))
-						if inlineErr != nil {
-							break loop
-						}
+						// _, inlineErr = app.discordClient.ChannelMessageSend(
+						// 	message.ChannelID,
+						// 	fmt.Sprintf("The codes did not match, the code you were given was '%s' and the code on your profile was '%s'",
+						// 		code, gotCode))
+						// if inlineErr != nil {
+						// 	break loop
+						// }
 					}
 				}
 
