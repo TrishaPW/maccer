@@ -28,10 +28,7 @@ func (app *App) commandVerify(args string, message discordgo.Message, contextual
 			fmt.Sprintf(`That is not a valid URL to a user page, it should be in the format:
 				
 				%s`, "`https://forum.bayarearoleplay.com/profile/21-southclaws/`"))
-		if err != nil {
-			logger.Warn("failed to send message", zap.Error(err))
-			return false, err
-		}
+		return false, err
 	}
 
 	userID := match[1]
