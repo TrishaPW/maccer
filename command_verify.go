@@ -1,79 +1,138 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
+	"regexp"
 	"time"
 
+	"github.com/Southclaws/invision-community-go"
 	"github.com/bwmarrin/discordgo"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
+// MatchURL matches a user's profile URL and captures the ID
+var MatchURL = regexp.MustCompile(`https:\/\/forum\.bayarearoleplay\.com\/profile\/([0-9]*)-(\w+)(\/)?`)
+
 func (app *App) commandVerify(args string, message discordgo.Message, contextual bool) (success bool, err error) {
-	logger.Info("verification request received",
+	logger.Debug("verification request received",
+		zap.String("url", args),
 		zap.String("userID", message.Author.ID))
 
-	_, err = app.ipsClient.GetMember(args)
+	match := MatchURL.FindStringSubmatch(args)
+
+	if len(match) < 2 {
+		_, err = app.discordClient.ChannelMessageSend(
+			message.ChannelID,
+			fmt.Sprintf(`That is not a valid URL to a user page, it should be in the format:
+				
+				%s`, "`https://forum.bayarearoleplay.com/profile/21-southclaws/`"))
+		if err != nil {
+			logger.Warn("failed to send message", zap.Error(err))
+			return false, err
+		}
+	}
+
+	userID := match[1]
+
+	_, err = app.ipsClient.GetMember(userID)
 	if err != nil {
 		return false, err
 	}
 
-	code, err := GenerateRandomString(8)
-	if err != nil {
-		return false, err
-	}
+	code := uuid.New().String()
 
-	app.discordClient.ChannelMessage(
+	_, err = app.discordClient.ChannelMessageSend(
 		message.ChannelID,
-		fmt.Sprintf(`Verification --
+		fmt.Sprintf(`***-- Verification --***
 Please paste this unique token into the **Discord** > **Verification Code** section of your profile:
 
-%s%s%s`,
-			"`", code, "`")) // can't escape ` inside a multi-line string so gotta format it in!
+%s%s%s
 
-	ticker := time.NewTicker(time.Second)
+You can find this section at the bottom of the **Edit Profile** menu:
+
+https://i.imgur.com/JJMC0KZ.png
+
+https://i.imgur.com/n8vfO2N.png`,
+			"`", code, "`")) // can't escape ` inside a multi-line string so gotta format it in!
+	if err != nil {
+		logger.Warn("failed to send message", zap.Error(err))
+		return false, err
+	}
+
+	ticker := time.NewTicker(time.Second * 5)
 	timer := time.NewTimer(time.Minute)
 	go func() {
-		var inlineErr error
+		var (
+			member    ips.Member
+			inlineErr error
+		)
+
 	loop:
 		for {
 			select {
 			case <-ticker.C:
-				member, err := app.ipsClient.GetMember(args)
-				if err != nil {
-					app.discordClient.ChannelMessage(
-						message.ChannelID,
-						fmt.Sprintf("There was an error while attempting to load profile information: %v please let Southclaws know!", err))
+				member, inlineErr = app.ipsClient.GetMember(userID)
+				if inlineErr != nil {
+					inlineErr = errors.Wrap(err, "failed to get member data from forum API")
 					break loop
 				}
 
 				fieldGroups, ok := member.CustomFields["Discord"]
 				if !ok {
-					inlineErr = errors.New("no Discord field in ")
+					inlineErr = errors.New("no Discord field in member custom fields")
 					break loop
 				}
 
 				gotCode, ok := fieldGroups["Verification Code"]
-				if ok {
+				if ok && len(gotCode) >= 8 {
 					if gotCode == code {
 						member.CustomFields["Discord"]["Discord Username"] = message.Author.Username
 						member.CustomFields["Discord"]["Discord ID"] = message.Author.ID
-						app.discordClient.ChannelMessage(message.ChannelID, "Your accounts have been linked and you have been verified!")
+
+						inlineErr = app.ipsClient.UpdateMember(member)
+						if inlineErr != nil {
+							inlineErr = errors.Wrap(err, "failed to get member data from forum API")
+							break loop
+						}
+
+						inlineErr = app.discordClient.GuildMemberRoleAdd(
+							app.config.GuildID,
+							message.Author.ID,
+							app.config.VerifiedRole,
+						)
+						if inlineErr != nil {
+							inlineErr = errors.Wrap(err, "failed to add member to role")
+							break loop
+						}
+
+						_, inlineErr = app.discordClient.ChannelMessageSend(message.ChannelID, "Your accounts have been linked and you have been verified!")
+						if inlineErr != nil {
+							inlineErr = errors.Wrap(err, "failed to send private message")
+							break loop
+						}
+
+						break loop
 					} else {
-						app.discordClient.ChannelMessage(
+						_, inlineErr = app.discordClient.ChannelMessageSend(
 							message.ChannelID,
 							fmt.Sprintf("The codes did not match, the code you were given was '%s' and the code on your profile was '%s'",
 								code, gotCode))
+						if inlineErr != nil {
+							break loop
+						}
 					}
-					break loop
 				}
 
+				logger.Debug("no code yet",
+					zap.Any("customFields", fieldGroups))
+
 			case <-timer.C:
-				app.discordClient.ChannelMessage(
+				_, inlineErr = app.discordClient.ChannelMessageSend(
 					message.ChannelID,
 					"Your time has expired, please try again.")
+				break loop
 			}
 		}
 
@@ -83,36 +142,4 @@ Please paste this unique token into the **Discord** > **Verification Code** sect
 	}()
 
 	return true, nil
-}
-
-/*
-Author: Matt Silverlock
-Date: 2014-05-24
-Accessed: 2017-02-22
-https://elithrar.github.io/article/generating-secure-random-numbers-crypto-rand
-*/
-
-// GenerateRandomBytes returns securely generated random bytes.
-// It will return an error if the system's secure random
-// number generator fails to function correctly, in which
-// case the caller should not continue.
-func GenerateRandomBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
-}
-
-// GenerateRandomString returns a URL-safe, base64 encoded
-// securely generated random string.
-// It will return an error if the system's secure random
-// number generator fails to function correctly, in which
-// case the caller should not continue.
-func GenerateRandomString(s int) (string, error) {
-	b, err := GenerateRandomBytes(s)
-	return base64.URLEncoding.EncodeToString(b), err
 }

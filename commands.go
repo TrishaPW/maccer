@@ -30,7 +30,7 @@ func LoadCommands(app *App) map[string]Command {
 			Function:    app.commandVerify,
 			Source:      CommandSourcePRIVATE,
 			Description: "Verify you are the owner of a Bay Area Roleplay forum account",
-			Usage:       "verify <id>",
+			Usage:       "verify <profile page URL>\nYour profile page can be accessed here: https://i.imgur.com/htrHTvV.png",
 			ParametersRange: CommandParametersRange{
 				Minimum: 1,
 				Maximum: 1,
@@ -85,12 +85,9 @@ func (app *App) StartCommandManager() {
 // Process is called on a command string to check whether it's a valid command
 // and, if so, call the associated function.
 // nolint:gocyclo
-func (cm CommandManager) Process(message discordgo.Message) (exists bool, source CommandSource, errs []error) {
-	var err error
-
+func (cm CommandManager) Process(message discordgo.Message) (exists bool, source CommandSource, err error) {
 	source, err = cm.getCommandSource(message)
 	if err != nil {
-		errs = []error{err}
 		return
 	}
 
@@ -110,7 +107,7 @@ func (cm CommandManager) Process(message discordgo.Message) (exists bool, source
 	if !exists {
 		logger.Debug("ignoring command that does not exist",
 			zap.String("command", commandTrigger))
-		return exists, source, nil
+		return
 	}
 
 	if source != commandObject.Source {
@@ -118,80 +115,76 @@ func (cm CommandManager) Process(message discordgo.Message) (exists bool, source
 			zap.String("command", commandTrigger),
 			zap.Any("source", source),
 			zap.Any("wantSource", commandObject.Source))
-		return exists, source, nil
+		return
 	}
 
 	switch source {
 	case CommandSourceADMINISTRATIVE:
 		if message.ChannelID != cm.App.config.AdministrativeChannel {
 			logger.Debug("ignoring admin command used in wrong channel", zap.String("command", commandTrigger))
-			return exists, source, errs
+			return
 		}
 	case CommandSourcePRIMARY:
 		if message.ChannelID != cm.App.config.PrimaryChannel {
 			logger.Debug("ignoring primary channel command used in wrong channel", zap.String("command", commandTrigger))
-			return exists, source, errs
+			return
 		}
 	}
 
 	// Check if the user is verified.
-	if commandObject.RequireVerified {
-		// todo: write IsUserVerified based on roles rather than a DB
-		// verified, err := cm.App.IsUserVerified(message.Author.ID)
-		// if err != nil {
-		// 	errs = append(errs, err)
-		// 	return exists, source, errs
-		// }
-		// if !verified {
-		// 	logger.Debug("ignoring command that requires verification from non-verified user", zap.String("command", commandTrigger))
+	// todo: write IsUserVerified based on roles rather than a DB
+	// if commandObject.RequireVerified {
+	// 	verified, err := cm.App.IsUserVerified(message.Author.ID)
+	// 	if err != nil {
+	// 		errs = append(errs, err)
+	// 		return exists, source, errs
+	// 	}
+	// 	if !verified {
+	// 		logger.Debug("ignoring command that requires verification from non-verified user", zap.String("command", commandTrigger))
 
-		// 	_, err = cm.App.discordClient.ChannelMessageSend(message.ChannelID, cm.App.locale.GetLangString("en", "CommandRequireVerification", message.Author.ID))
-		// 	if err != nil {
-		// 		errs = append(errs, err)
-		// 	}
-		// 	return exists, source, errs
-		// }
-	}
+	// 		_, err = cm.App.discordClient.ChannelMessageSend(message.ChannelID, cm.App.locale.GetLangString("en", "CommandRequireVerification", message.Author.ID))
+	// 		if err != nil {
+	// 			errs = append(errs, err)
+	// 		}
+	// 		return exists, source, errs
+	// 	}
+	// }
 
 	// Check if we have the required number of parameters.
 	if commandObject.ParametersRange.Minimum > -1 && commandParametersCount < commandObject.ParametersRange.Minimum {
 		logger.Debug("ignoring ignoring command with incorrect parameter count", zap.String("command", commandTrigger))
 
-		_, err = cm.App.discordClient.ChannelMessageSend(message.ChannelID, fmt.Sprintf("%s\n%s\n%s", commandObject.Usage, commandObject.Description, commandObject.Example))
-		if err != nil {
-			errs = append(errs, err)
-		}
+		_, err = cm.App.discordClient.ChannelMessageSend(message.ChannelID,
+			fmt.Sprintf("%s\n%s\n%s", commandObject.Usage, commandObject.Description, commandObject.Example))
 
-		return exists, source, errs
+		return
 	} else if commandObject.ParametersRange.Maximum > -1 && commandParametersCount > commandObject.ParametersRange.Maximum {
 		logger.Debug("ignoring ignoring command with incorrect parameter count", zap.String("command", commandTrigger))
 
-		_, err = cm.App.discordClient.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Too many parameters, command requires %d", commandObject.ParametersRange.Maximum))
-		if err != nil {
-			errs = append(errs, err)
-		}
+		_, err = cm.App.discordClient.ChannelMessageSend(message.ChannelID,
+			fmt.Sprintf("Too many parameters, command requires %d", commandObject.ParametersRange.Maximum))
 
-		return exists, source, errs
+		return
 	}
 
 	err = cm.App.discordClient.ChannelTyping(message.ChannelID)
 	if err != nil {
-		logger.Warn("failed to get channel info",
-			zap.Error(err))
 		return
 	}
 
 	success, err := commandObject.Function(commandArgument, message, false)
-	errs = append(errs, err)
+	if err != nil {
+		return
+	}
 
 	if !success {
 		_, err = cm.App.discordClient.ChannelMessageSend(
 			message.ChannelID,
 			fmt.Sprintf("%s\n%s\n%s", commandObject.Usage, commandObject.Description, commandObject.Example))
-		errs = append(errs, err)
+		return
 	}
 
-	return exists, source, errs
+	return
 }
 
 func (cm CommandManager) getCommandSource(message discordgo.Message) (CommandSource, error) {

@@ -27,8 +27,9 @@ func (app *App) ConnectDiscord() {
 	}
 }
 
-// nolint:gocyclo
 func (app *App) onReady(s *discordgo.Session, event *discordgo.Ready) {
+	logger.Debug("discord ready")
+
 	roles, err := s.GuildRoles(app.config.GuildID)
 	if err != nil {
 		logger.Fatal("failed to get guild roles",
@@ -45,6 +46,8 @@ func (app *App) onReady(s *discordgo.Session, event *discordgo.Ready) {
 		logger.Fatal("role not found.",
 			zap.String("role", app.config.VerifiedRole))
 	}
+
+	logger.Debug("app ready")
 
 	app.ready <- true
 }
@@ -66,24 +69,18 @@ func (app *App) onMessage(s *discordgo.Session, event *discordgo.MessageCreate) 
 		logger.Debug("accepting command from debug user")
 	}
 
-	_, source, errs := app.commandManager.Process(*event.Message)
-	for _, err := range errs {
-		if err != nil {
-			app.ChannelLogError(err)
-		}
+	_, _, err := app.commandManager.Process(*event.Message)
+	if err != nil {
+		app.ChannelLogError(err)
 	}
 
-	if source != CommandSourcePRIVATE && source != CommandSourceADMINISTRATIVE {
-		for i := range event.Message.Mentions {
-			if event.Message.Mentions[i].ID == app.config.BotID {
-				// todo: summon
-				// err := app.HandleSummon(*event.Message)
-				// if err != nil {
-				// 	logger.Warn("failed to handle summon", zap.Error(err))
-				// }
-			}
-		}
-	}
+	// if source != CommandSourcePRIVATE && source != CommandSourceADMINISTRATIVE {
+	// 	for i := range event.Message.Mentions {
+	// 		if event.Message.Mentions[i].ID == app.config.BotID {
+	// 			// todo: summon
+	// 		}
+	// 	}
+	// }
 }
 
 func (app *App) onJoin(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
@@ -108,7 +105,7 @@ func (app *App) onJoin(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
 
 // ChannelLogError sends an error to the logging channel, exiting on failure
 func (app *App) ChannelLogError(err error) {
-	_, err = app.discordClient.ChannelMessageSend(app.config.LogChannel, errors.Cause(err).Error())
+	_, err = app.discordClient.ChannelMessageSend(app.config.LogChannel, errors.WithStack(err).Error())
 	if err != nil {
 		logger.Fatal("failed to log error", zap.Error(err))
 	}
