@@ -61,7 +61,7 @@ func main() {
 		BotID:                 configStrFromEnv("BOT_ID"),
 		GuildID:               configStrFromEnv("GUILD_ID"),
 		VerifiedRole:          configStrFromEnv("VERIFIED_ROLE"),
-		DebugUser:             configStrFromEnv("DEBUG_USER"),
+		DebugUser:             os.Getenv("DEBUG_USER"),
 		AdministrativeChannel: configStrFromEnv("ADMINISTRATIVE_CHANNEL"),
 		PrimaryChannel:        configStrFromEnv("PRIMARY_CHANNEL"),
 		LogChannel:            configStrFromEnv("LOG_CHANNEL"),
