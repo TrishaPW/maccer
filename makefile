@@ -1,6 +1,6 @@
 VERSION := $(shell cat VERSION)
 LDFLAGS := -ldflags "-X main.version=$(VERSION)"
-include .env
+-include .env
 
 .PHONY: version
 
