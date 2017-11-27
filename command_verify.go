@@ -25,9 +25,12 @@ func (app *App) commandVerify(args string, message discordgo.Message, contextual
 	if len(match) < 2 {
 		_, err = app.discordClient.ChannelMessageSend(
 			message.ChannelID,
-			fmt.Sprintf(`That is not a valid URL to a user page, it should be in the format:
-				
-				%s`, "`https://forum.bayarearoleplay.com/profile/21-southclaws/`"))
+			fmt.Sprintf(`
+That is not a valid URL to a user page, it should be in the format:
+
+%s
+
+For more help, please read: https://forum.bayarearoleplay.com/topic/705-how-to-verify-your-discord-account/	`, "`https://forum.bayarearoleplay.com/profile/21-southclaws/`"))
 		return false, err
 	}
 
