@@ -40,21 +40,16 @@ func (app *App) commandVerify(args string, message discordgo.Message, contextual
 
 	code := uuid.New().String()
 
-	_, err = app.discordClient.ChannelMessageSend(
-		message.ChannelID,
-		fmt.Sprintf(`***-- Verification --***
-Please paste this unique token into the **Discord** > **Verification Code** section of your profile:
-
-%s%s%s
-
-You can find this section at the bottom of the **Edit Profile** menu:
-
-https://i.imgur.com/JJMC0KZ.png
-
-https://i.imgur.com/n8vfO2N.png`,
-			"`", code, "`")) // can't escape ` inside a multi-line string so gotta format it in!
+	_, err = app.discordClient.ChannelMessageSend(message.ChannelID, "***-- Verification --***\nPlease paste this unique token into the **Discord** > **Verification Code** section of your profile:")
 	if err != nil {
-		logger.Warn("failed to send message", zap.Error(err))
+		return false, err
+	}
+	_, err = app.discordClient.ChannelMessageSend(message.ChannelID, fmt.Sprintf("`%s`", code))
+	if err != nil {
+		return false, err
+	}
+	_, err = app.discordClient.ChannelMessageSend(message.ChannelID, "You can find this section at the bottom of the **Edit Profile** menu:\n\nhttps://i.imgur.com/JJMC0KZ.png\n\nhttps://i.imgur.com/n8vfO2N.png")
+	if err != nil {
 		return false, err
 	}
 
