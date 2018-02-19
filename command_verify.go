@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Southclaws/invision-community-go"
+	"github.com/Southclaws/maccer/types"
 	"github.com/bwmarrin/discordgo"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -83,12 +84,14 @@ For more help, please read: https://forum.bayarearoleplay.com/topic/705-how-to-v
 				gotCode, ok := fieldGroups["Verification Code"]
 				if ok && len(gotCode) >= 8 {
 					if gotCode == code {
-						member.CustomFields["Discord"]["Discord Username"] = message.Author.Username
-						member.CustomFields["Discord"]["Discord ID"] = message.Author.ID
+						user := types.User{
+							DiscordID: message.Author.ID,
+							ForumID:   userID,
+						}
 
-						inlineErr = app.ipsClient.UpdateMember(member)
+						inlineErr = app.CreateUser(user)
 						if inlineErr != nil {
-							inlineErr = errors.Wrap(err, "failed to get member data from forum API")
+							inlineErr = errors.Wrap(err, "failed to update user in database")
 							break loop
 						}
 

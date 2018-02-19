@@ -4,6 +4,11 @@ import (
 	"github.com/Southclaws/maccer/types"
 )
 
+// CreateUser inserts a new record for a user
+func (app App) CreateUser(user types.User) (err error) {
+	return
+}
+
 // GetUserByDiscord returns a user from the database via their discord ID
 func (app App) GetUserByDiscord(id string) (user types.User, err error) {
 	return
