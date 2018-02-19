@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	// loads environment variables from .env
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/kelseyhightower/envconfig"
 )
 
 var logger *zap.Logger
@@ -43,31 +44,31 @@ func init() {
 
 // Config stores configuration variables
 type Config struct {
-	DiscordToken          string // discord API token
-	BotID                 string // the bot's client ID
-	GuildID               string // the discord server ID
-	VerifiedRole          string // ID of the role for verified members
-	DebugUser             string // When set, only this user can interact with the bot
-	AdministrativeChannel string // administrative channel where someone can speak as bot
-	PrimaryChannel        string // main channel the bot hangs out in
-	LogChannel            string // logging channel for errors etc
-	ForumEndpoint         string // Forum URL
-	ForumKey              string // API key
+	DiscordToken          string `required:"true",split_words:"true"` // discord API token
+	BotID                 string `required:"true",split_words:"true"` // the bot's client ID
+	GuildID               string `required:"true",split_words:"true"` // the discord server ID
+	VerifiedRole          string `required:"true",split_words:"true"` // ID of the role for verified members
+	DebugUser             string `required:"true",split_words:"true"` // When set, only this user can interact with the bot
+	AdministrativeChannel string `required:"true",split_words:"true"` // administrative channel where someone can speak as bot
+	PrimaryChannel        string `required:"true",split_words:"true"` // main channel the bot hangs out in
+	LogChannel            string `required:"true",split_words:"true"` // logging channel for errors etc
+	ForumEndpoint         string `required:"true",split_words:"true"` // Forum URL
+	ForumKey              string `required:"true",split_words:"true"` // API key
+	MongoHost             string `split_words:"true" required:"true"` // MongoDB host address
+	MongoPort             string `split_words:"true" required:"true"` // MongoDB host port
+	MongoName             string `split_words:"true" required:"true"` // MongoDB database name
+	MongoUser             string `split_words:"true" required:"true"` // MongoDB user name
+	MongoPass             string `split_words:"true"`                 // MongoDB password
 }
 
 func main() {
-	Start(Config{
-		DiscordToken:          configStrFromEnv("DISCORD_TOKEN"),
-		BotID:                 configStrFromEnv("BOT_ID"),
-		GuildID:               configStrFromEnv("GUILD_ID"),
-		VerifiedRole:          configStrFromEnv("VERIFIED_ROLE"),
-		DebugUser:             os.Getenv("DEBUG_USER"),
-		AdministrativeChannel: configStrFromEnv("ADMINISTRATIVE_CHANNEL"),
-		PrimaryChannel:        configStrFromEnv("PRIMARY_CHANNEL"),
-		LogChannel:            configStrFromEnv("LOG_CHANNEL"),
-		ForumEndpoint:         configStrFromEnv("FORUM_ENDPOINT"),
-		ForumKey:              configStrFromEnv("FORUM_KEY"),
-	})
+	var config Config
+	err := envconfig.Process("maccer", &config)
+	if err != nil {
+		logger.Fatal("failed to load config",
+			zap.Error(err))
+	}
+	Start(config)
 }
 
 func configStrFromEnv(name string) (value string) {

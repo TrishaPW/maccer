@@ -109,15 +109,15 @@ For more help, please read: https://forum.bayarearoleplay.com/topic/705-how-to-v
 						}
 
 						break loop
-					} else {
-						// _, inlineErr = app.discordClient.ChannelMessageSend(
-						// 	message.ChannelID,
-						// 	fmt.Sprintf("The codes did not match, the code you were given was '%s' and the code on your profile was '%s'",
-						// 		code, gotCode))
-						// if inlineErr != nil {
-						// 	break loop
-						// }
-					}
+					} /* else {
+						_, inlineErr = app.discordClient.ChannelMessageSend(
+							message.ChannelID,
+							fmt.Sprintf("The codes did not match, the code you were given was '%s' and the code on your profile was '%s'",
+								code, gotCode))
+						if inlineErr != nil {
+							break loop
+						}
+					}*/
 				}
 
 				logger.Debug("no code yet",
