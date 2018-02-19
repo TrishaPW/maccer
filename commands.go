@@ -39,6 +39,19 @@ func LoadCommands(app *App) map[string]Command {
 			RequireAdmin:    false,
 			Context:         true,
 		},
+		"whois": {
+			Function:    app.commandWhoIs,
+			Source:      CommandSourcePRIMARY,
+			Description: "Get a Discord users' forum account",
+			Usage:       "whois @user",
+			ParametersRange: CommandParametersRange{
+				Minimum: 1,
+				Maximum: 1,
+			},
+			RequireVerified: true,
+			RequireAdmin:    false,
+			Context:         false,
+		},
 	}
 }
 
