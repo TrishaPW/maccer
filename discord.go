@@ -107,6 +107,7 @@ func (app *App) onJoin(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
 
 // ChannelLogError sends an error to the logging channel, exiting on failure
 func (app *App) ChannelLogError(err error) {
+	logger.Error("error received", zap.Error(err))
 	_, err = app.discordClient.ChannelMessageSend(app.config.LogChannel, fmt.Sprint(errors.WithStack(err)))
 	if err != nil {
 		logger.Fatal("failed to log error", zap.Error(err))
