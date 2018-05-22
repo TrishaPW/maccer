@@ -44,16 +44,16 @@ func init() {
 
 // Config stores configuration variables
 type Config struct {
-	DiscordToken          string `required:"true",split_words:"true"` // discord API token
-	BotID                 string `required:"true",split_words:"true"` // the bot's client ID
-	GuildID               string `required:"true",split_words:"true"` // the discord server ID
-	VerifiedRole          string `required:"true",split_words:"true"` // ID of the role for verified members
-	DebugUser             string `required:"true",split_words:"true"` // When set, only this user can interact with the bot
-	AdministrativeChannel string `required:"true",split_words:"true"` // administrative channel where someone can speak as bot
-	PrimaryChannel        string `required:"true",split_words:"true"` // main channel the bot hangs out in
-	LogChannel            string `required:"true",split_words:"true"` // logging channel for errors etc
-	ForumEndpoint         string `required:"true",split_words:"true"` // Forum URL
-	ForumKey              string `required:"true",split_words:"true"` // API key
+	DiscordToken          string `split_words:"true" required:"true"` // discord API token
+	BotID                 string `split_words:"true" required:"true"` // the bot's client ID
+	GuildID               string `split_words:"true" required:"true"` // the discord server ID
+	VerifiedRole          string `split_words:"true" required:"true"` // ID of the role for verified members
+	DebugUser             string `split_words:"true" required:"true"` // When set, only this user can interact with the bot
+	AdministrativeChannel string `split_words:"true" required:"true"` // administrative channel where someone can speak as bot
+	PrimaryChannel        string `split_words:"true" required:"true"` // main channel the bot hangs out in
+	LogChannel            string `split_words:"true" required:"true"` // logging channel for errors etc
+	ForumEndpoint         string `split_words:"true" required:"true"` // Forum URL
+	ForumKey              string `split_words:"true" required:"true"` // API key
 	MongoHost             string `split_words:"true" required:"true"` // MongoDB host address
 	MongoPort             string `split_words:"true" required:"true"` // MongoDB host port
 	MongoName             string `split_words:"true" required:"true"` // MongoDB database name
