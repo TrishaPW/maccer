@@ -38,7 +38,7 @@ run:
 		--network host \
 		--env-file .env \
 		-e DEBUG=1 \
-		southclaws/maccer:$(VERSION)
+		trishapw/maccer:$(VERSION)
 
 run-prod:
 	-docker kill maccer
